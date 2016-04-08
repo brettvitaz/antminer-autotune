@@ -7,12 +7,23 @@ miners = [
 ]
 
 
-def throttle(device):
-    print(device._host, 'temp:', device.temperature, device.elapsed)
-    temp = device.temperature
-    if temp > 70 and device.elapsed > 30:
-        new_freq = device.api_frequency - 25
-        print(device._host, 'lowering freq to:', new_freq)
+def throttle(device: Antminer):
+    temperature = device.temperature
+    elapsed = device.elapsed
+
+    print(device.host, 'temp:', temperature, elapsed)
+
+    new_freq = None
+    if temperature > 75 and elapsed > 30:
+        if device.api_frequency > 100:  # cool-down logic
+            new_freq = device.api_frequency - 25
+
+    elif temperature < 69 and elapsed > 600:
+        if device.api_frequency < 700:  # speed-up logic
+            new_freq = device.api_frequency + 25
+
+    if new_freq:
+        print(device.host, 'changing freq to:', new_freq)
         device.frequency = new_freq
         device.push_config(True)
 

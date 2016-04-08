@@ -15,10 +15,29 @@ def ssh_client(fn):
         with SSHClient() as client:
             client.load_system_host_keys()
             client.set_missing_host_key_policy(AutoAddPolicy)
-            client.connect(self._host, self._ssh_port, self._username, self._password)
+            client.connect(self.host, self.ssh_port, self._username, self._password)
             return fn(self, client, *args, **kwargs)
 
     return fn_wrap
+
+
+def api_cache(key):
+    def api_cache_wrap(fn):
+        def fn_wrap(self, *args, **kwargs):
+            try:
+                if self._api_cache[key]['timestamp'] + 1 > time.time():
+                    return self._api_cache['stats']['result']
+            except KeyError:
+                pass
+            self._api_cache[key] = {
+                'result': fn(self, *args, **kwargs),
+                'timestamp': time.time()
+            }
+            return self._api_cache['stats']['result']
+
+        return fn_wrap
+
+    return api_cache_wrap
 
 
 class Antminer:
@@ -28,9 +47,9 @@ class Antminer:
     TIMEOUT = 5
 
     def __init__(self, host, ssh_port=22, api_port=4028, username='root', password='admin'):
-        self._host = host
-        self._ssh_port = ssh_port
-        self._api_port = api_port
+        self.host = host
+        self.ssh_port = ssh_port
+        self.api_port = api_port
         self._username = username
         self._password = password
 
@@ -39,6 +58,7 @@ class Antminer:
         self._make_dir()
 
         self._config = None  # self.read_config()
+        self._api_cache = {}
 
     @property
     def config(self):
@@ -85,6 +105,7 @@ class Antminer:
             self.config['bitmain-fan-ctrl'] = value
 
     @property
+    @api_cache('stats')
     def stats(self):
         return self.send_api_command({'command': 'stats'})['STATS'][1]
 
@@ -113,6 +134,7 @@ class Antminer:
         return int(self.stats['frequency'])
 
     @property
+    @api_cache('summary')
     def summary(self):
         return self.send_api_command({'command': 'summary'})['SUMMARY'][0]
 
@@ -121,7 +143,7 @@ class Antminer:
         return int(self.summary['Elapsed'])
 
     def _make_dir(self):
-        os.makedirs(self._host, exist_ok=True)
+        os.makedirs(self.host, exist_ok=True)
 
     @ssh_client
     def pull_config(self, client):
@@ -158,7 +180,7 @@ class Antminer:
 
         with socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM) as _socket:
             _socket.settimeout(self.TIMEOUT)
-            _socket.connect((self._host, self._api_port))
+            _socket.connect((self.host, self.api_port))
             _socket.send(json.dumps(cmd).encode())
 
             if expect_response:
