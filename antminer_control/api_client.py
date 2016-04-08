@@ -7,15 +7,15 @@ from collections import namedtuple
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
-adr = namedtuple('Address', 'ip port')
+adr = namedtuple('Address', 'host port')
 
-IP = '192.168.168.13'
+HOST = '192.168.168.13'
 
 SSH_PORT = 22
 API_PORT = 4028
 
-SSH_ADDRESS = adr(IP, SSH_PORT)
-API_ADDRESS = adr(IP, API_PORT)
+SSH_ADDRESS = adr(HOST, SSH_PORT)
+API_ADDRESS = adr(HOST, API_PORT)
 
 TIMEOUT = 5
 
@@ -77,7 +77,7 @@ def retrieve_config(path, address):
     with SSHClient() as client:
         client.load_system_host_keys()
         client.set_missing_host_key_policy(AutoAddPolicy())
-        client.connect(address.ip, address.port, 'root', 'admin')
+        client.connect(address.host, address.port, 'root', 'admin')
         scp = SCPClient(client.get_transport())
         scp.get('/config/cgminer.conf', path)
 
@@ -86,18 +86,18 @@ def send_config(path, address):
     with SSHClient() as client:
         client.load_system_host_keys()
         client.set_missing_host_key_policy(AutoAddPolicy())
-        client.connect(address.ip, address.port, 'root', 'admin')
+        client.connect(address.host, address.port, 'root', 'admin')
         scp = SCPClient(client.get_transport())
         scp.put(path, '/config/cgminer.conf')
         print(client.exec_command('/etc/init.d/cgminer.sh restart'))
         time.sleep(10)
 
 
-try:
-    send_config('./test.conf', SSH_ADDRESS)
-except Exception as e:
-    print(e)
-    exit(1)
+# try:
+#     send_config('./test.conf', SSH_ADDRESS)
+# except Exception as e:
+#     print(e)
+#     exit(1)
 
 # try:
 #     retrieve_config('./config.conf', SSH_ADDRESS)

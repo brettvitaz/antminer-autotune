@@ -10,8 +10,21 @@ from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
 
+def ssh_client(fn):
+    def fn_wrap(self, *args, **kwargs):
+        with SSHClient() as client:
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(AutoAddPolicy)
+            client.connect(self._host, self._ssh_port, self._username, self._password)
+            return fn(self, client, *args, **kwargs)
+
+    return fn_wrap
+
+
 class Antminer:
-    CONFIG_FILE = 'cgminer.conf'
+    CONFIG_FILE_DIR = '/config'
+    CONFIG_FILE_NAME = 'cgminer.conf'
+    RESTART_COMMAND = '/etc/init.d/cgminer.sh restart'
     TIMEOUT = 5
 
     def __init__(self, host, ssh_port=22, api_port=4028, username='root', password='admin'):
@@ -21,8 +34,8 @@ class Antminer:
         self._username = username
         self._password = password
 
-        self._local_config_path = Path(host, self.CONFIG_FILE)
-        self._remote_config_path = PosixPath('/config', self.CONFIG_FILE)
+        self._local_config_path = Path(host, self.CONFIG_FILE_NAME)
+        self._remote_config_path = PosixPath(self.CONFIG_FILE_DIR, self.CONFIG_FILE_NAME)
         self._make_dir()
 
         self._config = None  # self.read_config()
@@ -35,7 +48,7 @@ class Antminer:
 
     @property
     def frequency(self):
-        return self.config['bitmain-freq']
+        return int(self.config['bitmain-freq'])
 
     @frequency.setter
     def frequency(self, value):
@@ -71,46 +84,74 @@ class Antminer:
         if isinstance(value, bool):
             self.config['bitmain-fan-ctrl'] = value
 
+    @property
+    def stats(self):
+        return self.send_api_command({'command': 'stats'})['STATS'][1]
+
+    @property
+    def temperature(self):
+        """Find and return the highest hashing board temperature from api 'stats' call.
+
+        :return: highest temperature of hashing boards
+        """
+        return max([v for k, v in self.stats.items() if re.fullmatch('temp\d+', k)])
+
+    @property
+    def hash_rate_avg(self):
+        return self.stats['GHS av']
+
+    @property
+    def hash_rate_5s(self):
+        return self.stats['GHS 5s']
+
+    @property
+    def hardware_error_rate(self):
+        return self.stats['Device Hardware%']
+
+    @property
+    def api_frequency(self):
+        return int(self.stats['frequency'])
+
+    @property
+    def summary(self):
+        return self.send_api_command({'command': 'summary'})['SUMMARY'][0]
+
+    @property
+    def elapsed(self):
+        return int(self.summary['Elapsed'])
+
     def _make_dir(self):
         os.makedirs(self._host, exist_ok=True)
 
-    def execute_ssh(self, cb):
-        with SSHClient() as client:
-            client.load_system_host_keys()
-            client.set_missing_host_key_policy(AutoAddPolicy)
-            client.connect(self._host, self._ssh_port, self._username, self._password)
-            cb(client)
+    @ssh_client
+    def pull_config(self, client):
+        scp = SCPClient(client.get_transport())
+        scp.get(str(self._remote_config_path), str(self._local_config_path))
+        os.chmod(str(self._local_config_path), 0o777)
 
-    def pull_config(self):
-        def _pull_config(client):
-            scp = SCPClient(client.get_transport())
-            scp.get(str(self._remote_config_path), str(self._local_config_path))
-            os.chmod(str(self._local_config_path), 0o777)
+    @ssh_client
+    def push_config(self, client, restart=False):
+        self.write_config()
 
-        self.execute_ssh(_pull_config)
+        scp = SCPClient(client.get_transport())
+        scp.put(str(self._local_config_path), str(self._remote_config_path))
+        if restart:
+            client.exec_command(self.RESTART_COMMAND)
+            time.sleep(10)
 
-    def push_config(self, restart=False):
-        def _push_config(client):
-            scp = SCPClient(client.get_transport())
-            scp.put(str(self._local_config_path), str(self._remote_config_path))
-            if restart:
-                client.exec_command('/etc/init.d/cgminer.sh restart')
-                time.sleep(10)
-
-        self.execute_ssh(_push_config)
-
-    def read_config(self):
-        self.pull_config()
+    def read_config(self, from_local=False):
+        if not from_local:
+            self.pull_config()
         with open(str(self._local_config_path)) as f:
             conf = json.loads(f.read(), object_pairs_hook=OrderedDict)
 
         return conf
 
     def write_config(self):
+        if not self._config:
+            raise RuntimeError('Config has not been read from device.')
         with open(str(self._local_config_path), 'w') as f:
             f.write(json.dumps(self._config, indent=0))
-
-            # self.push_config()
 
     def send_api_command(self, cmd, expect_response=True):
         resp = None
@@ -135,27 +176,3 @@ class Antminer:
 
     def fix_json_format(self, bad_json: str):
         return bad_json.replace('}{', '},{').strip(' \0')
-
-    @property
-    def stats(self):
-        return self.send_api_command({'command': 'stats'})['STATS'][1]
-
-    @property
-    def temperature(self):
-        return max({k: v for k, v in self.stats.items() if re.fullmatch('temp\d+', k)}.values())
-
-    @property
-    def hash_rate_avg(self):
-        return self.stats['GHS av']
-
-    @property
-    def hash_rate_5s(self):
-        return self.stats['GHS 5s']
-
-    @property
-    def hardware_error_rate(self):
-        return self.stats['Device Hardware%']
-
-    @property
-    def api_frequency(self):
-        return self.stats['frequency']
