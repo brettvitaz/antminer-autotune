@@ -1,40 +1,108 @@
-from antminer_control.antminer import Antminer
+import time
+
+# import click
+import yaml
+
+from apscheduler.events import EVENT_JOB_ERROR
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-miners = [
-    Antminer('192.168.168.13'),
-    Antminer('192.168.168.194')
-]
+from antminer_control.antminer import Antminer
+
+default_config = {
+    'min_temp': 72,
+    'max_temp': 76,
+    'dec_time': 30,
+    'inc_time': 900,
+    'dec_step': 25,
+    'inc_step': 25,
+    'min_freq': 100,
+    'max_freq': 700,
+    'refresh_time': 5
+}
 
 
-def throttle(device: Antminer):
+def merge_dicts(*dict_args):
+    """Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts."""
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
+
+
+def throttle(device: Antminer, job, min_temp, max_temp, dec_time, inc_time, min_freq, max_freq, inc_step, dec_step,
+             **kwargs):
     temperature = device.temperature
     elapsed = device.elapsed
+    api_frequency = device.api_frequency
 
-    print(device.host, 'temp:', temperature, elapsed)
+    print('{:<16} -'.format(device.host),
+          'temp: {:>2}     '.format(temperature),
+          'freq: {:>3}     '.format(api_frequency),
+          'uptime: {:>8}'.format(elapsed))
 
+    # TODO - Use settings from device.
     new_freq = None
-    if temperature > 75 and elapsed > 30:
-        if device.api_frequency > 100:  # cool-down logic
-            new_freq = device.api_frequency - 25
+    if temperature >= max_temp and elapsed > dec_time:  # cool-down logic
+        if api_frequency > min_freq:
+            new_freq = api_frequency - dec_step
 
-    elif temperature < 69 and elapsed > 600:
-        if device.api_frequency < 700:  # speed-up logic
-            new_freq = device.api_frequency + 25
+    elif temperature <= min_temp and elapsed > inc_time:  # speed-up logic
+        if api_frequency < max_freq:
+            new_freq = api_frequency + inc_step
 
     if new_freq:
-        print(device.host, 'changing freq to:', new_freq)
-        device.frequency = new_freq
-        device.push_config(True)
+        job['job'].pause()
+        print('{:<16} -'.format(device.host), 'setting frequency to:', new_freq)
+        try:
+            device.frequency = new_freq
+            device.push_config(True)
+            time.sleep(15)
+        except Exception as e:  # TODO - Investigate possible failures and retry options.
+            print('{:<16} -'.format(device.host), 'failed to set frequency!', e)
+        job['job'].resume()
 
 
-if __name__ == '__main__':
-    scheduler = BlockingScheduler()
+def listener(event):
+    print(event)
+    print(event.exception)
+
+
+# TODO - Click doesn't work easily on Python 3. Investigate alternative cli library.
+# @click.command()
+# @click.option('--config', type=click.File())
+def main(*args, **kwargs):
+    config = default_config.copy()
+    miners = []
+
+    try:
+        config_file = yaml.load(open('config.yml'))
+        config.update(config_file['defaults'])
+        miners.extend(config_file['miners'])
+    except FileNotFoundError:
+        print('Config file was not found.')
+        exit(1)
+    except KeyError:
+        print('Config file was malformed.')
+        exit(1)
+
+    # print(config)
+    # print(miners)
+
+    scheduler = BlockingScheduler(job_defaults={'coalesce': True})
+    scheduler.add_listener(listener, EVENT_JOB_ERROR)
 
     for miner in miners:
-        scheduler.add_job(throttle, 'interval', args=(miner,), seconds=5)
+        job_config = merge_dicts(config, {'job': {}})
+        job = scheduler.add_job(throttle, 'interval', args=((Antminer(**miner)),), kwargs=job_config,
+                                misfire_grace_time=30, seconds=config['refresh_time'])
+        job_config['job'].update({'job': job})
 
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
         pass
+
+
+if __name__ == '__main__':
+    main()

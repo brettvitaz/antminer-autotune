@@ -9,6 +9,21 @@ from pathlib import Path, PosixPath
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
+models = {
+    's7': {
+        'ssh_port': 22,
+        'api_port': 4028,
+        'username': 'root',
+        'password': 'admin',
+        'min_freq': 100,
+        'max_freq': 700,
+        'min_temp': 72,
+        'max_temp': 76,
+        'dec_time': 30,
+        'inc_time': 900,
+    }
+}
+
 
 def ssh_client(fn):
     def fn_wrap(self, *args, **kwargs):
@@ -46,12 +61,14 @@ class Antminer:
     RESTART_COMMAND = '/etc/init.d/cgminer.sh restart'
     TIMEOUT = 5
 
-    def __init__(self, host, ssh_port=22, api_port=4028, username='root', password='admin'):
+    def __init__(self, host, model, ssh_port=None, api_port=None, username=None, password=None):
+        if isinstance(model, str):
+            model = models[model]
         self.host = host
-        self.ssh_port = ssh_port
-        self.api_port = api_port
-        self._username = username
-        self._password = password
+        self.ssh_port = ssh_port or model['ssh_port']
+        self.api_port = api_port or model['api_port']
+        self._username = username or model['username']
+        self._password = password or model['password']
 
         self._local_config_path = Path(host, self.CONFIG_FILE_NAME)
         self._remote_config_path = PosixPath(self.CONFIG_FILE_DIR, self.CONFIG_FILE_NAME)

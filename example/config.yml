@@ -1,0 +1,12 @@
+defaults:
+  max_temp: 76
+  min_temp: 72
+  dec_time: 30
+  inc_time: 900
+  refresh_time: 15
+
+miners:
+  - host: 192.168.168.13
+    model: s7
+  - host: 192.168.168.194
+    model: s7
