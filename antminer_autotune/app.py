@@ -1,3 +1,4 @@
+import datetime
 import time
 
 # import click
@@ -30,11 +31,18 @@ def merge_dicts(*dict_args):
     return result
 
 
-def throttle(device: Antminer, job, min_temp, max_temp, dec_time, inc_time, min_freq, max_freq, inc_step, dec_step,
-             **kwargs):
-    temperature = device.temperature
-    elapsed = device.elapsed
-    api_frequency = device.api_frequency
+def throttle(device: Antminer, job, idx,
+             min_temp, max_temp,
+             dec_time, inc_time,
+             min_freq, max_freq,
+             inc_step, dec_step, **kwargs):
+    try:
+        temperature = device.temperature
+        elapsed = device.elapsed
+        api_frequency = device.api_frequency
+    except Exception as e:
+        print('{:<16} -'.format(device.host), 'Failed to collect api data: ', e)
+        return e
 
     print('{:<16} -'.format(device.host),
           'temp: {:>2}     '.format(temperature),
@@ -92,10 +100,11 @@ def main(*args, **kwargs):
     scheduler = BlockingScheduler(job_defaults={'coalesce': True})
     scheduler.add_listener(listener, EVENT_JOB_ERROR)
 
-    for miner in miners:
-        job_config = merge_dicts(config, {'job': {}})
+    for idx, miner in enumerate(miners):
+        job_config = merge_dicts(config, {'job': {}, 'idx': idx})
         job = scheduler.add_job(throttle, 'interval', args=((Antminer(**miner)),), kwargs=job_config,
-                                misfire_grace_time=30, seconds=config['refresh_time'])
+                                misfire_grace_time=30, seconds=config['refresh_time'],
+                                next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=idx * 0.2))
         job_config['job'].update({'job': job})
 
     try:
