@@ -6,7 +6,7 @@ import yaml
 from apscheduler.events import EVENT_JOB_ERROR
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-from antminer_control.antminer import Antminer
+from antminer_autotune.antminer import Antminer
 
 default_config = {
     'min_temp': 72,
