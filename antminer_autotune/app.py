@@ -1,3 +1,4 @@
+import curses
 import datetime
 import time
 
@@ -21,6 +22,8 @@ default_config = {
     'refresh_time': 5
 }
 
+output = print
+
 
 def merge_dicts(*dict_args):
     """Given any number of dicts, shallow copy and merge into a new dict,
@@ -41,13 +44,13 @@ def throttle(device: Antminer, job, idx,
         elapsed = device.elapsed
         api_frequency = device.api_frequency
     except Exception as e:
-        print('{:<16} -'.format(device.host), 'Failed to collect api data: ', e)
+        output(idx, '{:<16} -'.format(device.host), 'Failed to collect api data: ', e)
         return e
 
-    print('{:<16} -'.format(device.host),
-          'temp: {:>2}     '.format(temperature),
-          'freq: {:>3}     '.format(api_frequency),
-          'uptime: {:>8}'.format(elapsed))
+    output(idx, '{:<16} -'.format(device.host),
+           'temp: {:>2}     '.format(temperature),
+           'freq: {:>3}     '.format(api_frequency),
+           'uptime: {:>8}'.format(elapsed))
 
     # TODO - Use settings from device.
     new_freq = None
@@ -61,13 +64,13 @@ def throttle(device: Antminer, job, idx,
 
     if new_freq:
         job['job'].pause()
-        print('{:<16} -'.format(device.host), 'setting frequency to:', new_freq)
+        output(idx, '{:<16} -'.format(device.host), 'setting frequency to:', new_freq)
         try:
             device.frequency = new_freq
             device.push_config(True)
             time.sleep(15)
         except Exception as e:  # TODO - Investigate possible failures and retry options.
-            print('{:<16} -'.format(device.host), 'failed to set frequency!', e)
+            output(idx, '{:<16} -'.format(device.host), 'failed to set frequency!', e)
         job['job'].resume()
 
 
@@ -79,7 +82,7 @@ def listener(event):
 # TODO - Click doesn't work easily on Python 3. Investigate alternative cli library.
 # @click.command()
 # @click.option('--config', type=click.File())
-def main(*args, **kwargs):
+def run(*args, **kwargs):
     config = default_config.copy()
     miners = []
 
@@ -111,6 +114,33 @@ def main(*args, **kwargs):
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
         pass
+
+
+def run_curses(stdscr):
+    def output_fn(*args, **kwargs):
+        stdscr.addstr(args[0], 0, ' '.join([str(arg) for arg in args[1:]]))
+        stdscr.refresh()
+
+    global output
+    output = output_fn
+
+    run()
+
+
+def run_standard():
+    def output_fn(*args, **kwargs):
+        print(*args[1:], **kwargs)
+
+    global output
+    output = output_fn
+    run()
+
+
+def main():
+    try:
+        curses.wrapper(run_curses)
+    except curses.error:
+        run_standard()
 
 
 if __name__ == '__main__':
