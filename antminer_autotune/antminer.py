@@ -36,11 +36,11 @@ def ssh_client(fn):
     return fn_wrap
 
 
-def api_cache(key):
+def api_cache(key, cache_time=1):
     def api_cache_wrap(fn):
         def fn_wrap(self, *args, **kwargs):
             try:
-                if self._api_cache[key]['timestamp'] + 1 > time.time():
+                if self._api_cache[key]['timestamp'] + cache_time > time.time():
                     return self._api_cache['stats']['result']
             except KeyError:
                 pass
@@ -65,14 +65,14 @@ class Antminer:
         if isinstance(model, str):
             model = models[model]
         self.host = host
-        self.ssh_port = ssh_port or model['ssh_port']
-        self.api_port = api_port or model['api_port']
+        self.ssh_port = int(ssh_port or model['ssh_port'])
+        self.api_port = int(api_port or model['api_port'])
         self._username = username or model['username']
         self._password = password or model['password']
 
         self._local_config_path = Path(host, self.CONFIG_FILE_NAME)
         self._remote_config_path = PosixPath(self.CONFIG_FILE_DIR, self.CONFIG_FILE_NAME)
-        self._make_dir()
+        os.makedirs(self.host, exist_ok=True)
 
         self._config = None  # self.read_config()
         self._api_cache = {}
@@ -158,9 +158,6 @@ class Antminer:
     @property
     def elapsed(self):
         return int(self.summary['Elapsed'])
-
-    def _make_dir(self):
-        os.makedirs(self.host, exist_ok=True)
 
     @ssh_client
     def pull_config(self, client):
