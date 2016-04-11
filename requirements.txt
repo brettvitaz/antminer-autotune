@@ -5,3 +5,4 @@ scp==0.10.2
 apscheduler==3.1.0
 pyyaml==3.11
 #click==6.6
+pathlib==1.0.1

@@ -34,11 +34,16 @@ def merge_dicts(*dict_args):
     return result
 
 
-def throttle(device: Antminer, job, idx,
+def throttle(device, job, idx,
              min_temp, max_temp,
              dec_time, inc_time,
              min_freq, max_freq,
              inc_step, dec_step, **kwargs):
+    """
+
+    :type device: Antminer
+    :type job: apscheduler.Job
+    """
     try:
         temperature = device.temperature
         elapsed = device.elapsed

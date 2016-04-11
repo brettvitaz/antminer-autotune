@@ -9,6 +9,8 @@ from pathlib import Path, PosixPath
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
+from antminer_autotune.util import makedir, fix_json_format
+
 models = {
     's7': {
         'ssh_port': 22,
@@ -72,7 +74,6 @@ class Antminer:
 
         self._local_config_path = Path(host, self.CONFIG_FILE_NAME)
         self._remote_config_path = PosixPath(self.CONFIG_FILE_DIR, self.CONFIG_FILE_NAME)
-        os.makedirs(self.host, exist_ok=True)
 
         self._config = None  # self.read_config()
         self._api_cache = {}
@@ -161,6 +162,7 @@ class Antminer:
 
     @ssh_client
     def pull_config(self, client):
+        makedir(self.host)
         scp = SCPClient(client.get_transport())
         scp.get(str(self._remote_config_path), str(self._local_config_path))
         os.chmod(str(self._local_config_path), 0o777)
@@ -206,9 +208,6 @@ class Antminer:
                     else:
                         break
 
-                resp = json.loads(self.fix_json_format(resp.decode()))
+                resp = json.loads(fix_json_format(resp.decode()))
 
         return resp
-
-    def fix_json_format(self, bad_json: str):
-        return bad_json.replace('}{', '},{').strip(' \0')
