@@ -3,7 +3,7 @@ defaults:
   min_temp: 72
   dec_time: 30
   inc_time: 900
-  refresh_time: 15
+  refresh_time: 10
 
 miners:
   - host: 192.168.168.13
