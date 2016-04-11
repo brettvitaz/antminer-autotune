@@ -2,6 +2,7 @@ import datetime
 import time
 
 # import click
+import sys
 import yaml
 
 from apscheduler.events import EVENT_JOB_ERROR
@@ -9,7 +10,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 
 from antminer_autotune.antminer import Antminer
 
-default_config = {
+DEFAULT_CONFIG = {
     'min_temp': 72,
     'max_temp': 76,
     'dec_time': 30,
@@ -20,6 +21,8 @@ default_config = {
     'max_freq': 700,
     'refresh_time': 5
 }
+
+DEFAULT_CONFIG_FILENAME = 'config.yml'
 
 
 def merge_dicts(*dict_args):
@@ -80,18 +83,19 @@ def listener(event):
 # @click.command()
 # @click.option('--config', type=click.File())
 def main(*args, **kwargs):
-    config = default_config.copy()
+    config_filename = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_CONFIG_FILENAME
+    config = DEFAULT_CONFIG.copy()
     miners = []
 
     try:
-        config_file = yaml.load(open('config.yml'))
+        config_file = yaml.load(open(config_filename))
         config.update(config_file['defaults'])
         miners.extend(config_file['miners'])
     except FileNotFoundError:
-        print('Config file was not found.')
+        print('Config file \'{}\' was not found.'.format(config_filename))
         exit(1)
-    except KeyError:
-        print('Config file was malformed.')
+    except KeyError as e:
+        print('Config did not contain section {}.'.format(e))
         exit(1)
 
     # print(config)
