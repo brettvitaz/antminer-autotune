@@ -64,7 +64,8 @@ class Antminer:
         self.api_port = int(api_port or self.model['api_port'])
         self._username = username or self.model['username']
         self._password = password or self.model['password']
-        self.frequencies = ListTraverse([v['value'] for v in self.model['frequencies']])
+        self.frequencies = ListTraverse([v['value'] for v in self.model['frequencies']],
+                                        min_value=self.model['min_freq'], max_value=self.model['max_freq'])
 
         self._local_config_path = Path(host, self.CONFIG_FILE_NAME)
         self._remote_config_path = PosixPath(self.CONFIG_FILE_DIR, self.CONFIG_FILE_NAME)
