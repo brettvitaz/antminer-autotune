@@ -9,6 +9,7 @@ from apscheduler.events import EVENT_JOB_ERROR
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from antminer_autotune.antminer import Antminer
+from antminer_autotune.util import merge_dicts
 
 DEFAULT_CONFIG = {
     'min_temp': 72,
@@ -23,15 +24,6 @@ DEFAULT_CONFIG = {
 }
 
 DEFAULT_CONFIG_FILENAME = 'config.yml'
-
-
-def merge_dicts(*dict_args):
-    """Given any number of dicts, shallow copy and merge into a new dict,
-    precedence goes to key value pairs in latter dicts."""
-    result = {}
-    for dictionary in dict_args:
-        result.update(dictionary)
-    return result
 
 
 def throttle(device, job, idx,
