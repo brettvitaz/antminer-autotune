@@ -53,11 +53,11 @@ def throttle(device, job, idx,
     new_freq = None
     if temperature >= max_temp and elapsed > dec_time:  # cool-down logic
         if api_frequency > min_freq:
-            new_freq = api_frequency - dec_step
+            new_freq = device.prev_frequency()
 
     elif temperature <= min_temp and elapsed > inc_time:  # speed-up logic
         if api_frequency < max_freq:
-            new_freq = api_frequency + inc_step
+            new_freq = device.next_frequency()
 
     if new_freq:
         job['job'].pause()
