@@ -118,7 +118,7 @@ def test_list_traverse_with_no_max():
 
     lt = ListTraverse(l, cur_value=70)
 
-    assert(lt.current() == 70)
+    assert(lt.current == 70)
     assert(lt.next() == 80)
     assert(lt.next() == 80)
 

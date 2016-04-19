@@ -33,8 +33,13 @@ class ListTraverse:
         self.max_index = self.values.index(max_value) if max_value else len(self.values) - 1
         self.index = self.values.index(cur_value) if cur_value else 0
 
+    @property
     def current(self):
         return self.values[self.index]
+
+    @current.setter
+    def current(self, value):
+        self.index = self.values.index(value)
 
     def next(self, cur_value=None):
         if cur_value:
