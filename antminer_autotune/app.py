@@ -63,6 +63,7 @@ def throttle(device, job, idx,
         job['job'].pause()
         print('{:<16} -'.format(device.host), 'setting frequency to:', new_freq)
         try:
+            device.reset_config()
             device.frequency = new_freq
             device.push_config(True)
             time.sleep(15)

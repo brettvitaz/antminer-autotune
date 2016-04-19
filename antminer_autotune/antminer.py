@@ -175,6 +175,9 @@ class Antminer:
 
         return conf
 
+    def reset_config(self):
+        self._config = None
+
     def write_config(self):
         if not self._config:
             raise RuntimeError('Config has not been read from device.')
