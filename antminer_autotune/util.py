@@ -25,3 +25,29 @@ def merge_dicts(*dict_args):
         result.update(dictionary)
     return result
 
+
+class ListTraverse:
+    def __init__(self, values, cur_value=None, min_value=None, max_value=None):
+        self.values = values
+        self.min_index = self.values.index(min_value) if min_value else 0
+        self.max_index = self.values.index(max_value) if max_value else len(self.values) - 1
+        self.index = self.values.index(cur_value) if cur_value else 0
+
+    def current(self):
+        return self.values[self.index]
+
+    def next(self, cur_value=None):
+        if cur_value:
+            self.index = self.values.index(cur_value)
+        if (self.index < len(self.values) and
+                self.index + 1 <= self.max_index):
+            self.index += 1
+        return self.values[self.index]
+
+    def prev(self, cur_value=None):
+        if cur_value:
+            self.index = self.values.index(cur_value)
+        if (self.index > 0 and
+                self.index - 1 >= self.min_index):
+            self.index -= 1
+        return self.values[self.index]
