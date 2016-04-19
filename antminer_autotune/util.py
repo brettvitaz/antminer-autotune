@@ -51,3 +51,6 @@ class ListTraverse:
                 self.index - 1 >= self.min_index):
             self.index -= 1
         return self.values[self.index]
+
+    def is_valid(self, value):
+        return bool(self.values.count(value) and self.min_index <= self.values.index(value) <= self.max_index)

@@ -121,3 +121,23 @@ def test_list_traverse_with_no_max():
     assert(lt.current() == 70)
     assert(lt.next() == 80)
     assert(lt.next() == 80)
+
+
+def test_list_traverse_is_valid():
+    l = [
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80
+    ]
+
+    lt = ListTraverse(l, min_value=30, max_value=70)
+
+    assert(lt.is_valid(50))
+    assert(not lt.is_valid(51))
+    assert(not lt.is_valid(20))
+    assert(not lt.is_valid(80))
