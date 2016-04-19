@@ -15,7 +15,7 @@ def test_list_traverse():
 
     lt = ListTraverse(l)
 
-    assert(lt.current() == 10)
+    assert(lt.current == 10)
     assert(lt.next() == 20)
     assert(lt.next() == 30)
     assert(lt.next() == 40)
@@ -36,7 +36,7 @@ def test_list_traverse_with_dec():
 
     lt = ListTraverse(l)
 
-    assert(lt.current() == 1.1)
+    assert(lt.current == 1.1)
     assert(lt.next() == 1.2)
     assert(lt.next() == 1.3)
     assert(lt.next() == 1.4)
@@ -57,7 +57,7 @@ def test_list_traverse_with_min():
 
     lt = ListTraverse(l, cur_value=50, min_value=30)
 
-    assert(lt.current() == 50)
+    assert(lt.current == 50)
     assert(lt.prev() == 40)
     assert(lt.prev() == 30)
     assert(lt.prev() != 20)
@@ -78,7 +78,7 @@ def test_list_traverse_with_no_min():
 
     lt = ListTraverse(l, cur_value=20)
 
-    assert(lt.current() == 20)
+    assert(lt.current == 20)
     assert(lt.prev() == 10)
     assert(lt.prev() == 10)
 
@@ -97,7 +97,7 @@ def test_list_traverse_with_max():
 
     lt = ListTraverse(l, cur_value=50, max_value=70)
 
-    assert(lt.current() == 50)
+    assert(lt.current == 50)
     assert(lt.next() == 60)
     assert(lt.next() == 70)
     assert(lt.next() != 80)
