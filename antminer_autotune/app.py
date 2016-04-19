@@ -50,6 +50,7 @@ def throttle(device, job, idx,
           'uptime: {:>8}'.format(elapsed))
 
     # TODO - Use settings from device.
+    # TODO - Debounce temperature.
     new_freq = None
     if temperature > max_temp and elapsed > dec_time:  # cool-down logic
         if api_frequency > min_freq:
