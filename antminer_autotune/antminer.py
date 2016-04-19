@@ -11,6 +11,7 @@ from scp import SCPClient
 
 from antminer_autotune.util import makedir, fix_json_format
 from antminer_autotune.models import models
+from antminer_autotune.util import merge_dicts
 
 
 def ssh_client(fn):
@@ -49,13 +50,14 @@ class Antminer:
     RESTART_COMMAND = '/etc/init.d/cgminer.sh restart'
     TIMEOUT = 5
 
-    def __init__(self, host, model, ssh_port=None, api_port=None, username=None, password=None):
+    def __init__(self, host, model, ssh_port=None, api_port=None, username=None, password=None, **kwargs):
         if isinstance(model, str):
             self.model = models[model].copy()
         elif isinstance(model, dict):
             self.model = model.copy()
         else:
             raise TypeError('Arg `model` must be a string (key from known models dict) or a dict.')
+        self.model = merge_dicts(self.model, kwargs)
 
         self.host = host
         self.ssh_port = int(ssh_port or self.model['ssh_port'])
