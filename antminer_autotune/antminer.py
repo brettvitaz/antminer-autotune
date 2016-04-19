@@ -9,7 +9,7 @@ from pathlib import Path, PosixPath
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
-from antminer_autotune.util import makedir, fix_json_format
+from antminer_autotune.util import makedir, fix_json_format, ListTraverse
 from antminer_autotune.models import models
 from antminer_autotune.util import merge_dicts
 
@@ -64,6 +64,7 @@ class Antminer:
         self.api_port = int(api_port or self.model['api_port'])
         self._username = username or self.model['username']
         self._password = password or self.model['password']
+        self.frequencies = ListTraverse([v.value for v in self.model['frequencies']])
 
         self._local_config_path = Path(host, self.CONFIG_FILE_NAME)
         self._remote_config_path = PosixPath(self.CONFIG_FILE_DIR, self.CONFIG_FILE_NAME)
@@ -89,7 +90,13 @@ class Antminer:
             raise ValueError('Frequency is not valid: {}'.format(value))
 
     def _is_valid_frequency(self, value):
-        return value in (v.value for v in self.model['frequencies'])
+        return self.frequencies.is_valid(value)
+
+    def next_frequency(self):
+        return self.frequencies.next(self.api_frequency)
+
+    def prev_frequency(self):
+        return self.frequencies.prev(self.api_frequency)
 
     @property
     def fan_speed(self):
