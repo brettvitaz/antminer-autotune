@@ -40,6 +40,7 @@ def throttle(device, job, idx,
         temperature = device.temperature
         elapsed = device.elapsed
         api_frequency = device.api_frequency
+        hw_err = device.hardware_error_rate
     except Exception as e:
         print('{:<16} -'.format(device.host), 'Failed to collect api data: ', e)
         return e
@@ -47,16 +48,22 @@ def throttle(device, job, idx,
     print('{:<16} -'.format(device.host),
           'temp: {:>2}     '.format(temperature),
           'freq: {:>3}     '.format(api_frequency),
-          'uptime: {:>8}'.format(elapsed))
+          'uptime: {:>6}   '.format(elapsed),
+          'hr: {:>7.2f}   '.format(device.hash_rate_avg), 
+          'h5: {:>7.2f}   '.format(device.hash_rate_5s), 
+          'hw: {:>7.4}%'.format(hw_err))
 
     # TODO - Use settings from device.
     new_freq = None
-    if temperature > max_temp and elapsed > dec_time:  # cool-down logic
-        if api_frequency > min_freq:
+    if api_frequency > device.model['max_freq']:
+        new_freq = device.model['max_freq']
+
+    elif temperature > max_temp and elapsed > dec_time:  # cool-down logic
+        if api_frequency > device.model['min_freq']:
             new_freq = device.prev_frequency()
 
-    elif temperature < min_temp and elapsed > inc_time:  # speed-up logic
-        if api_frequency < max_freq:
+    elif api_frequency < device.model['max_freq'] and temperature < min_temp and elapsed > inc_time:  # speed-up logic
+        if api_frequency < device.model['max_freq']:
             new_freq = device.next_frequency()
 
     if new_freq:

@@ -137,15 +137,15 @@ class Antminer:
 
     @property
     def hash_rate_avg(self):
-        return self.stats['GHS av']
+        return float(self.stats['GHS av'])
 
     @property
     def hash_rate_5s(self):
-        return self.stats['GHS 5s']
+        return float(self.stats['GHS 5s'])
 
     @property
     def hardware_error_rate(self):
-        return self.stats['Device Hardware%']
+        return float(self.stats['Device Hardware%'])
 
     @property
     def api_frequency(self):
