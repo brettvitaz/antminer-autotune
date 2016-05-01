@@ -54,6 +54,7 @@ def throttle(device, job, idx,
           'hw: {:>7.4}%'.format(hw_err))
 
     # TODO - Use settings from device.
+    # TODO - Debounce temperature.
     new_freq = None
     if api_frequency > device.model['max_freq']:
         new_freq = device.model['max_freq']
