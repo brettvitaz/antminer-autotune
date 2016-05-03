@@ -16,21 +16,13 @@ DEFAULT_CONFIG = {
     'max_temp': 76,
     'dec_time': 30,
     'inc_time': 900,
-    'dec_step': 25,
-    'inc_step': 25,
-    'min_freq': 100,
-    'max_freq': 700,
     'refresh_time': 5
 }
 
 DEFAULT_CONFIG_FILENAME = 'config.yml'
 
 
-def throttle(device, job, idx,
-             min_temp, max_temp,
-             dec_time, inc_time,
-             min_freq, max_freq,
-             inc_step, dec_step, **kwargs):
+def throttle(device, job, min_temp, max_temp, dec_time, inc_time, **kwargs):
     """
 
     :type device: Antminer
@@ -46,8 +38,8 @@ def throttle(device, job, idx,
         return e
 
     print('{:<16} -'.format(device.host),
-          'temp: {:>2}     '.format(temperature),
-          'freq: {:>3}     '.format(api_frequency),
+          'temp: {:>2}   '.format(temperature),
+          'freq: {:>3}   '.format(api_frequency),
           'uptime: {:>6}   '.format(elapsed),
           'hr: {:>7.2f}   '.format(device.hash_rate_avg), 
           'h5: {:>7.2f}   '.format(device.hash_rate_5s), 
