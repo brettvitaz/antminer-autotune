@@ -20,6 +20,9 @@ def test_list_traverse():
     assert(lt.next() == 30)
     assert(lt.next() == 40)
     assert(lt.next() == 50)
+    assert(lt.next(step=2) == 70)
+    assert(lt.prev(step=3) == 40)
+    assert(lt.next(step=10) == 80)
 
 
 def test_list_traverse_with_dec():

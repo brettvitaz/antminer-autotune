@@ -41,21 +41,23 @@ class ListTraverse:
     def current(self, value):
         self.index = self.values.index(value)
 
-    def next(self, cur_value=None):
+    def _next(self, cur_value=None, step=1):
         if cur_value:
-            self.index = self.values.index(cur_value)
-        if (self.index < len(self.values) and
-                self.index + 1 <= self.max_index):
-            self.index += 1
+            self.current = cur_value
+        if self.min_index > self.index + step:
+            self.index = self.min_index
+        elif self.max_index < self.index + step:
+            self.index = self.max_index
+        else:
+            self.index += step
+
         return self.values[self.index]
 
-    def prev(self, cur_value=None):
-        if cur_value:
-            self.index = self.values.index(cur_value)
-        if (self.index > 0 and
-                self.index - 1 >= self.min_index):
-            self.index -= 1
-        return self.values[self.index]
+    def next(self, cur_value=None, step=1):
+        return self._next(cur_value, abs(step))
+
+    def prev(self, cur_value=None, step=1):
+        return self._next(cur_value, -abs(step))
 
     def is_valid(self, value):
         return bool(self.values.count(value) and self.min_index <= self.values.index(value) <= self.max_index)
