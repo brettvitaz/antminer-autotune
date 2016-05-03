@@ -22,7 +22,7 @@ DEFAULT_CONFIG = {
 DEFAULT_CONFIG_FILENAME = 'config.yml'
 
 
-def throttle(device, job, **kwargs):
+def throttle(device, jobs, **kwargs):
     """
 
     :type device: Antminer
@@ -61,7 +61,7 @@ def throttle(device, job, **kwargs):
         new_freq = device.next_frequency(int(abs(temperature - device.model['min_temp']) / 3) + 1)
 
     if new_freq:
-        job['job'].pause()
+        [job.pause() for job in jobs]
         print('{:<16} -'.format(device.host), 'setting frequency to:', new_freq)
         try:
             device.reset_config()
@@ -70,7 +70,22 @@ def throttle(device, job, **kwargs):
             time.sleep(15)
         except Exception as e:  # TODO - Investigate possible failures and retry options.
             print('{:<16} -'.format(device.host), 'failed to set frequency!', e)
-        job['job'].resume()
+
+        [job.resume() for job in jobs]
+
+
+def do_thing(device, command, value, jobs, **kwargs):
+    [job.pause() for job in jobs]
+    print('{:<16} -'.format(device.host), 'setting {} to:'.format(command), value)
+    try:
+        device.reset_config()
+        setattr(device, command, value)
+        device.push_config(True)
+        time.sleep(15)
+    except Exception as e:
+        print('{:<16} -'.format(device.host), 'failed to set {}!'.format(command), e)
+
+    [job.resume() for job in jobs]
 
 
 def listener(event):
@@ -104,11 +119,23 @@ def main(*args, **kwargs):
     scheduler.add_listener(listener, EVENT_JOB_ERROR)
 
     for idx, miner in enumerate(miners):
-        job_config = merge_dicts(config, {'job': {}, 'idx': idx})
-        job = scheduler.add_job(throttle, 'interval', args=((Antminer(**miner)),), kwargs=job_config,
+        schedules = miner.pop('schedule', [])
+        device = Antminer(**miner)
+        job_config = merge_dicts(config, {'jobs': [], 'idx': idx})
+        job = scheduler.add_job(throttle, 'interval', args=(device,), kwargs=job_config,
                                 misfire_grace_time=30, seconds=config['refresh_time'],
                                 next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=idx * 0.2))
-        job_config['job'].update({'job': job})
+        job_config['jobs'].append(job)
+        for schedule in schedules:
+            print(schedule)
+            trigger_args = {k: schedule.pop(k) for k in schedule.copy() if
+                            k in ['year', 'month', 'day', 'week', 'day_of_week', 'hour', 'minute', 'second',
+                                  'start_date', 'end_date']}
+            print(trigger_args)
+            job = scheduler.add_job(do_thing, 'cron', args=(device, schedule['command'], schedule['value'],),
+                                    kwargs=job_config, **trigger_args)
+            job_config['jobs'].append(job)
+
 
     try:
         scheduler.start()
