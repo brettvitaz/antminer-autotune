@@ -6,10 +6,10 @@ models = {
         'password': 'admin',
         'min_freq': 100,
         'max_freq': 700,
-        'min_temp': 72,
-        'max_temp': 76,
+        'min_temp': 75,
+        'max_temp': 77,
         'dec_time': 30,
-        'inc_time': 900,
+        'inc_time': 600,
         'frequencies': [
             {'value': 100, 'freq': 100.00},
             {'value': 125, 'freq': 125.00},
