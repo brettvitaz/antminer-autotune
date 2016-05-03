@@ -22,7 +22,7 @@ DEFAULT_CONFIG = {
 DEFAULT_CONFIG_FILENAME = 'config.yml'
 
 
-def throttle(device, job, min_temp, max_temp, dec_time, inc_time, **kwargs):
+def throttle(device, job, **kwargs):
     """
 
     :type device: Antminer
@@ -41,23 +41,24 @@ def throttle(device, job, min_temp, max_temp, dec_time, inc_time, **kwargs):
           'temp: {:>2}   '.format(temperature),
           'freq: {:>3}   '.format(api_frequency),
           'uptime: {:>6}   '.format(elapsed),
-          'hr: {:>7.2f}   '.format(device.hash_rate_avg), 
-          'h5: {:>7.2f}   '.format(device.hash_rate_5s), 
+          'hr: {:>7.2f}   '.format(device.hash_rate_avg),
+          'h5: {:>7.2f}   '.format(device.hash_rate_5s),
           'hw: {:>7.4}%'.format(hw_err))
 
-    # TODO - Use settings from device.
     # TODO - Debounce temperature.
     new_freq = None
     if api_frequency > device.model['max_freq']:
         new_freq = device.model['max_freq']
 
-    elif temperature > max_temp and elapsed > dec_time:  # cool-down logic
-        if api_frequency > device.model['min_freq']:
-            new_freq = device.prev_frequency()
+    elif (api_frequency > device.model['min_freq'] and
+                  temperature > device.model['max_temp'] and
+                  elapsed > device.model['dec_time']):  # cool-down logic
+        new_freq = device.prev_frequency()
 
-    elif api_frequency < device.model['max_freq'] and temperature < min_temp and elapsed > inc_time:  # speed-up logic
-        if api_frequency < device.model['max_freq']:
-            new_freq = device.next_frequency()
+    elif (api_frequency < device.model['max_freq'] and
+                  temperature < device.model['min_temp'] and
+                  elapsed > device.model['inc_time']):  # speed-up logic
+        new_freq = device.next_frequency(int(abs(temperature - device.model['min_temp']) / 3) + 1)
 
     if new_freq:
         job['job'].pause()
