@@ -93,11 +93,11 @@ class Antminer:
     def _is_valid_frequency(self, value):
         return self.frequencies.is_valid(value)
 
-    def next_frequency(self):
-        return self.frequencies.next(self.api_frequency)
+    def next_frequency(self, step=1):
+        return self.frequencies.next(self.api_frequency, step)
 
-    def prev_frequency(self):
-        return self.frequencies.prev(self.api_frequency)
+    def prev_frequency(self, step=1):
+        return self.frequencies.prev(self.api_frequency, step)
 
     @property
     def fan_speed(self):
