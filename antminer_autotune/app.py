@@ -74,12 +74,13 @@ def throttle(device, jobs, **kwargs):
         [job.resume() for job in jobs]
 
 
-def do_thing(device, command, value, jobs, **kwargs):
+def do_thing(device, commands, jobs, **kwargs):
     [job.pause() for job in jobs]
-    print('{:<16} -'.format(device.host), 'setting {} to:'.format(command), value)
     try:
         device.reset_config()
-        setattr(device, command, value)
+        for command in commands:
+            setattr(device, command['command'], command['value'])
+            print('{:<16} -'.format(device.host), 'setting {} to:'.format(command['command']), command['value'])
         device.push_config(True)
         time.sleep(15)
     except Exception as e:
@@ -121,6 +122,7 @@ def main(*args, **kwargs):
     for idx, miner in enumerate(miners):
         schedules = miner.pop('schedule', [])
         device = Antminer(**miner)
+        print(device.host, device.api_port)
         job_config = merge_dicts(config, {'jobs': [], 'idx': idx})
         job = scheduler.add_job(throttle, 'interval', args=(device,), kwargs=job_config,
                                 misfire_grace_time=30, seconds=config['refresh_time'],
@@ -132,8 +134,8 @@ def main(*args, **kwargs):
                             k in ['year', 'month', 'day', 'week', 'day_of_week', 'hour', 'minute', 'second',
                                   'start_date', 'end_date']}
             print(trigger_args)
-            job = scheduler.add_job(do_thing, 'cron', args=(device, schedule['command'], schedule['value'],),
-                                    kwargs=job_config, **trigger_args)
+            commands = schedule.get('commands') or [{'command': schedule['command'], 'value': schedule['value']}]
+            job = scheduler.add_job(do_thing, 'cron', args=(device, commands,), kwargs=job_config, **trigger_args)
             job_config['jobs'].append(job)
 
 
