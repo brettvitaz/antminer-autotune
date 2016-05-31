@@ -18,7 +18,7 @@ def ssh_client(fn):
     def fn_wrap(self, *args, **kwargs):
         with SSHClient() as client:
             client.load_system_host_keys()
-            client.set_missing_host_key_policy(AutoAddPolicy)
+            client.set_missing_host_key_policy(AutoAddPolicy())
             client.connect(self.host, self.ssh_port, self._username, self._password)
             return fn(self, client, *args, **kwargs)
 
