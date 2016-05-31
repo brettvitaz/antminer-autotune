@@ -9,22 +9,9 @@ from pathlib import Path, PosixPath
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
-from antminer_autotune.util import makedir, fix_json_format
-
-models = {
-    's7': {
-        'ssh_port': 22,
-        'api_port': 4028,
-        'username': 'root',
-        'password': 'admin',
-        'min_freq': 100,
-        'max_freq': 700,
-        'min_temp': 72,
-        'max_temp': 76,
-        'dec_time': 30,
-        'inc_time': 900,
-    }
-}
+from antminer_autotune.util import makedir, fix_json_format, ListTraverse
+from antminer_autotune.models import models
+from antminer_autotune.util import merge_dicts
 
 
 def ssh_client(fn):
@@ -63,14 +50,22 @@ class Antminer:
     RESTART_COMMAND = '/etc/init.d/cgminer.sh restart'
     TIMEOUT = 5
 
-    def __init__(self, host, model, ssh_port=None, api_port=None, username=None, password=None):
+    def __init__(self, host, model, ssh_port=None, api_port=None, username=None, password=None, **kwargs):
         if isinstance(model, str):
-            model = models[model]
+            self.model = models[model].copy()
+        elif isinstance(model, dict):
+            self.model = model.copy()
+        else:
+            raise TypeError('Arg `model` must be a string (key from known models dict) or a dict.')
+        self.model = merge_dicts(self.model, kwargs)
+
         self.host = host
-        self.ssh_port = int(ssh_port or model['ssh_port'])
-        self.api_port = int(api_port or model['api_port'])
-        self._username = username or model['username']
-        self._password = password or model['password']
+        self.ssh_port = int(ssh_port or self.model['ssh_port'])
+        self.api_port = int(api_port or self.model['api_port'])
+        self._username = username or self.model['username']
+        self._password = password or self.model['password']
+        self.frequencies = ListTraverse([v['value'] for v in self.model['frequencies']],
+                                        min_value=self.model['min_freq'], max_value=self.model['max_freq'])
 
         self._local_config_path = Path(host, self.CONFIG_FILE_NAME)
         self._remote_config_path = PosixPath(self.CONFIG_FILE_DIR, self.CONFIG_FILE_NAME)
@@ -96,8 +91,13 @@ class Antminer:
             raise ValueError('Frequency is not valid: {}'.format(value))
 
     def _is_valid_frequency(self, value):
-        return ((100 <= value <= 400 and value % 25 == 0) or
-                (400 <= value <= 700 and value % 6.25 == 0.0))
+        return self.frequencies.is_valid(value)
+
+    def next_frequency(self, step=1):
+        return self.frequencies.next(self.api_frequency, step)
+
+    def prev_frequency(self, step=1):
+        return self.frequencies.prev(self.api_frequency, step)
 
     @property
     def fan_speed(self):
@@ -137,15 +137,15 @@ class Antminer:
 
     @property
     def hash_rate_avg(self):
-        return self.stats['GHS av']
+        return float(self.stats['GHS av'])
 
     @property
     def hash_rate_5s(self):
-        return self.stats['GHS 5s']
+        return float(self.stats['GHS 5s'])
 
     @property
     def hardware_error_rate(self):
-        return self.stats['Device Hardware%']
+        return float(self.stats['Device Hardware%'])
 
     @property
     def api_frequency(self):
@@ -184,6 +184,9 @@ class Antminer:
             conf = json.loads(f.read(), object_pairs_hook=OrderedDict)
 
         return conf
+
+    def reset_config(self):
+        self._config = None
 
     def write_config(self):
         if not self._config:
